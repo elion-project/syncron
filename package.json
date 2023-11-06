@@ -3,6 +3,7 @@
     "version": "1.0.1",
     "description": "Provides a simple way to delivery models between sender and receiver",
     "main": "./dist/esm/index.js",
+    "types": "./dist/types/index.d.ts",
     "exports": {
         "types": "./dist/types/index.d.ts",
         "require": "./dist/cjs/index.js",
