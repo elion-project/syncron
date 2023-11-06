@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.1](https://github.com/elion-project/syncron/compare/v1.0.0...v1.0.1) (2023-11-06)
+
+
+### Bug Fixes
+
+* Add `README.md` ([92f73b7](https://github.com/elion-project/syncron/commit/92f73b7020d8e193bc7a37b71977fe767583a167))
+
 ## 1.0.0 (2023-11-06)
 
 
