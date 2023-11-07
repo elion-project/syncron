@@ -21,13 +21,13 @@ export enum UpdateStrategy {
 
 export const generateTrackIdentifier = (
     modelName: string,
-    action: string
+    action: string,
 ): string => `${modelName}:${action}`;
 
 export const getActionFromTrackIdentifier = (trackIdentifier: string): string =>
     trackIdentifier.split(":")[1];
 export const getModelNameFromTrackIdentifier = (
-    trackIdentifier: string
+    trackIdentifier: string,
 ): string => trackIdentifier.split(":")[0];
 
 export type ModelId = string | number;
@@ -130,7 +130,7 @@ export type ModelSubscribeEventMetaField = {
         onModelChange: () => Promise<JSONLike>;
         onCustomTrigger?: (
             eventName: string,
-            eventData: JSONLike
+            eventData: JSONLike,
         ) => Promise<JSONLike>;
     };
 };

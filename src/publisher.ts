@@ -1,5 +1,9 @@
-import { generateTrackIdentifier, ModelId, UpdateStrategyType } from "./types";
-import { JSONLike } from "./types";
+import {
+    generateTrackIdentifier,
+    ModelId,
+    UpdateStrategyType,
+    JSONLike,
+} from "./types";
 
 export type ModelEventPublisherConfig = {
     modelName: string;

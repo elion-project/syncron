@@ -23,8 +23,8 @@ import {
     ModelSubscriberEventFirstContentSendSize,
     ModelSubscribeUpdateEvent,
     UpdateStrategy,
+    JSONLike,
 } from "./types";
-import { JSONLike } from "./types";
 
 export type CustomTriggerOnEmit = {
     getAll: ModelEventSubscriber["config"]["getAll"];
