@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.3](https://github.com/elion-project/syncron/compare/v1.0.2...v1.0.3) (2023-11-07)
+
+
+### Bug Fixes
+
+* Update `package.json` ([4a664e7](https://github.com/elion-project/syncron/commit/4a664e7f3c7ffd416feed4cf747d47abd4f05917))
+
 ### [1.0.2](https://github.com/elion-project/syncron/compare/v1.0.1...v1.0.2) (2023-11-06)
 
 
