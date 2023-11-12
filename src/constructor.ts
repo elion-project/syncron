@@ -8,6 +8,8 @@ import {
     ModelSubscribeEventLike,
     ModelId,
     JSONLike,
+    ModelEventAction,
+    ModelSubscribeUpdateIndexEvent,
 } from "./types";
 
 export type ModelEventConstructorConfig = {
@@ -41,19 +43,26 @@ export class ModelEventConstructor {
         let updateModels = false;
         events.forEach((event) => {
             switch (event.action) {
-                case "update":
+                case ModelEventAction.UPDATE:
                     this.onUpdate.bind(this)(
                         event as ModelSubscribeUpdateEvent,
                     );
                     updateModels = true;
                     break;
-                case "delete":
+                case ModelEventAction.UPDATE_INDEX:
+                    // fixme: implement
+                    this.onUpdateIndex.bind(this)(
+                        event as ModelSubscribeUpdateIndexEvent,
+                    );
+                    updateModels = true;
+                    break;
+                case ModelEventAction.DELETE:
                     this.onDelete.bind(this)(
                         event as ModelSubscribeDeleteEvent,
                     );
                     updateModels = true;
                     break;
-                case "meta":
+                case ModelEventAction.META:
                     updateMetadata = true;
                     this.onMeta.bind(this)(event as ModelSubscribeMetaEvent);
                     break;
@@ -94,6 +103,12 @@ export class ModelEventConstructor {
             return true;
         }
         return false;
+    }
+
+    private onUpdateIndex(event: ModelSubscribeUpdateIndexEvent): void {
+        const { id, index } = event.data;
+        this.cleanModelFromIndexList(id);
+        this.modelIndexMap.splice(index, 0, id);
     }
 
     private onUpdate(event: ModelSubscribeUpdateEvent): void {

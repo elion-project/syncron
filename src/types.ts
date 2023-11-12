@@ -8,6 +8,7 @@ export type JSONLike =
 
 export enum ModelEventAction {
     UPDATE = "update",
+    UPDATE_INDEX = "update-index",
     DELETE = "delete",
     META = "meta",
 }
@@ -39,7 +40,7 @@ export type ModelPrototype = {
 export type ModelSubscribeEvent = {
     modelName: string;
     idParamName: string;
-    action: "update" | "delete" | "meta" | ModelEventAction | string;
+    action: ModelEventAction | string;
     data: {
         id: ModelId;
         data?: JSONLike;
@@ -53,6 +54,14 @@ export type ModelSubscribeUpdateEvent = ModelSubscribeEvent & {
         id: ModelId;
         data: JSONLike;
         updateStrategy: UpdateStrategyType;
+        index: number;
+    };
+};
+
+export type ModelSubscribeUpdateIndexEvent = ModelSubscribeEvent & {
+    action: ModelEventAction.UPDATE_INDEX;
+    data: {
+        id: ModelId;
         index: number;
     };
 };
@@ -74,6 +83,7 @@ export type ModelSubscribeMetaEvent = ModelSubscribeEvent & {
 
 export type ModelSubscribeEventLike =
     | ModelSubscribeUpdateEvent
+    | ModelSubscribeUpdateIndexEvent
     | ModelSubscribeDeleteEvent
     | ModelSubscribeMetaEvent;
 

@@ -24,6 +24,7 @@ import {
     ModelSubscribeUpdateEvent,
     UpdateStrategy,
     JSONLike,
+    ModelSubscribeUpdateIndexEvent,
 } from "./types";
 
 export type CustomTriggerOnEmit = {
@@ -617,12 +618,13 @@ export class ModelEventSubscriber {
     private async findIndexDiff(existedNewIdList?: ModelId[]): Promise<void> {
         const currentIdList = this.getStateIdList();
         const newIdList = existedNewIdList || (await this.config.getAllIds());
+        // console.log("currentIdList", currentIdList);
+        // console.log("newIdList", newIdList);
 
         const que = [
             ...currentIdList
                 .filter((id) => !newIdList.includes(id))
                 .map((id) => {
-                    this.modelState.delete(id);
                     const deleteEvent: ModelSubscribeDeleteEvent = {
                         modelName: this.config.trackModelName,
                         idParamName: this.config.idParamName,
@@ -631,14 +633,13 @@ export class ModelEventSubscriber {
                     };
                     return deleteEvent;
                 }),
+
             ...(await Promise.all(
-                newIdList
-                    .filter((id) => !currentIdList.includes(id))
-                    .map(async (id) => {
+                newIdList.map(async (id, index) => {
+                    if (currentIdList[index] !== id) {
                         const data = await this.config.getById(id);
                         this.modelState.set(id, data);
-                        const index = newIdList.indexOf(id);
-                        const createEvent: ModelSubscribeUpdateEvent = {
+                        return {
                             modelName: this.config.trackModelName,
                             idParamName: this.config.idParamName,
                             action: ModelEventAction.UPDATE,
@@ -648,11 +649,26 @@ export class ModelEventSubscriber {
                                 index,
                                 updateStrategy: UpdateStrategy.REPLACE,
                             },
-                        };
-                        return createEvent;
-                    }),
+                        } as ModelSubscribeUpdateEvent;
+                    }
+                    return {
+                        modelName: this.config.trackModelName,
+                        idParamName: this.config.idParamName,
+                        action: ModelEventAction.UPDATE_INDEX,
+                        data: {
+                            id,
+                            index,
+                        },
+                    } as ModelSubscribeUpdateIndexEvent;
+                }),
             )),
         ];
+        // console.log(
+        //     "que is",
+        //     que.map(
+        //         (item) => `${item.action} ${item.data.index} ${item.data.id}`,
+        //     ),
+        // );
         if (que.length) {
             this.pushToSendQueue(...que);
         }
