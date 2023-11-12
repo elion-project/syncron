@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/elion-project/syncron/compare/v1.0.3...v2.0.0) (2023-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Add `update-index` event. Fix `regenerateIndexes` issues
+
+### Features
+
+* Add `update-index` event. Fix `regenerateIndexes` issues ([27fab41](https://github.com/elion-project/syncron/commit/27fab41262939c6a8137a090bb6e2bb91fdf1bd4))
+
 ### [1.0.3](https://github.com/elion-project/syncron/compare/v1.0.2...v1.0.3) (2023-11-07)
 
 

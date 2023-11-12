@@ -1,6 +1,6 @@
 {
     "name": "@node-elion/syncron",
-    "version": "1.0.3",
+    "version": "2.0.0",
     "description": "Provides a simple way to delivery models between sender and receiver",
     "main": "./dist/esm/index.js",
     "types": "./dist/types/index.d.ts",
