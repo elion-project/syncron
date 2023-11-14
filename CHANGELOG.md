@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.1](https://github.com/elion-project/syncron/compare/v2.0.0...v2.0.1) (2023-11-14)
+
+
+### Bug Fixes
+
+* added `regenerateMeta` method. Added meta support in `findIndexDiff` ([44ed35b](https://github.com/elion-project/syncron/commit/44ed35bda93f799bd12bff7f1e3354e2ddc7dc90))
+
 ## [2.0.0](https://github.com/elion-project/syncron/compare/v1.0.3...v2.0.0) (2023-11-12)
 
 
