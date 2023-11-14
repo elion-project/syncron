@@ -25,6 +25,7 @@ import {
     UpdateStrategy,
     JSONLike,
     ModelSubscribeUpdateIndexEvent,
+    ModelSubscribeEventMeta,
 } from "./types";
 
 export type CustomTriggerOnEmit = {
@@ -503,6 +504,44 @@ export class ModelEventSubscriber {
             });
     }
 
+    private async updateMetaFields(
+        triggers?: string[] | false,
+        doPush: boolean = true,
+    ): Promise<void | ModelSubscribeMetaEvent[]> {
+        const doTriggerFilter = <A extends [string, any][]>(items: A) =>
+            triggers
+                ? items.filter(
+                      ([, item]) =>
+                          item.modelTriggers.some((trigger: string) =>
+                              triggers.includes(trigger),
+                          ) ||
+                          item.customTriggers.some((customTrigger: string) =>
+                              triggers.includes(customTrigger),
+                          ),
+                  )
+                : items;
+
+        const items = (
+            await Promise.all(
+                doTriggerFilter<[string, ModelSubscribeEventMeta][]>(
+                    Object.entries(this.config.metaFields),
+                ).map(async ([key, item]) => [key, await item.onModelChange()]),
+            )
+        ).map(
+            ([key, value]): ModelSubscribeMetaEvent => ({
+                modelName: this.config.trackModelName,
+                idParamName: this.config.idParamName,
+                action: ModelEventAction.META,
+                data: {
+                    id: key as string,
+                    data: value,
+                },
+            }),
+        );
+
+        return doPush ? this.pushToSendQueue(...items) : items;
+    }
+
     private async onQueueStep(): Promise<void> {
         if (this.queue.length) {
             let shouldUpdateIndexes = false;
@@ -528,36 +567,8 @@ export class ModelEventSubscriber {
             if (shouldUpdateIndexes) {
                 await this.findIndexDiff();
             }
-            this.pushToSendQueue(
-                ...(
-                    await Promise.all(
-                        Object.entries(this.config.metaFields)
-                            .filter(
-                                ([, item]) =>
-                                    item.modelTriggers.some((trigger) =>
-                                        triggers.includes(trigger),
-                                    ) ||
-                                    item.customTriggers.some((customTrigger) =>
-                                        triggers.includes(customTrigger),
-                                    ),
-                            )
-                            .map(async ([key, item]) => [
-                                key,
-                                await item.onModelChange(),
-                            ]),
-                    )
-                ).map(
-                    ([key, value]): ModelSubscribeMetaEvent => ({
-                        modelName: this.config.trackModelName,
-                        idParamName: this.config.idParamName,
-                        action: ModelEventAction.META,
-                        data: {
-                            id: key as string,
-                            data: value,
-                        },
-                    }),
-                ),
-            );
+
+            await this.updateMetaFields(triggers);
         }
 
         if (this.sendQueue.length) {
@@ -615,16 +626,22 @@ export class ModelEventSubscriber {
         this.pushToQueue({ header, body });
     }
 
-    private async findIndexDiff(existedNewIdList?: ModelId[]): Promise<void> {
+    private async findIndexDiff(
+        existedNewIdList?: ModelId[],
+        forceMetaUpgrade: boolean = false,
+    ): Promise<void> {
         const currentIdList = this.getStateIdList();
         const newIdList = existedNewIdList || (await this.config.getAllIds());
         // console.log("currentIdList", currentIdList);
         // console.log("newIdList", newIdList);
 
+        const eventsSet = new Set<ModelEventAction>();
+
         const que = [
             ...currentIdList
                 .filter((id) => !newIdList.includes(id))
                 .map((id) => {
+                    eventsSet.add(ModelEventAction.DELETE);
                     const deleteEvent: ModelSubscribeDeleteEvent = {
                         modelName: this.config.trackModelName,
                         idParamName: this.config.idParamName,
@@ -639,6 +656,7 @@ export class ModelEventSubscriber {
                     if (currentIdList[index] !== id) {
                         const data = await this.config.getById(id);
                         this.modelState.set(id, data);
+                        eventsSet.add(ModelEventAction.UPDATE);
                         return {
                             modelName: this.config.trackModelName,
                             idParamName: this.config.idParamName,
@@ -651,6 +669,7 @@ export class ModelEventSubscriber {
                             },
                         } as ModelSubscribeUpdateEvent;
                     }
+                    eventsSet.add(ModelEventAction.UPDATE_INDEX);
                     return {
                         modelName: this.config.trackModelName,
                         idParamName: this.config.idParamName,
@@ -662,6 +681,10 @@ export class ModelEventSubscriber {
                     } as ModelSubscribeUpdateIndexEvent;
                 }),
             )),
+            ...((await this.updateMetaFields(
+                forceMetaUpgrade ? false : [...eventsSet],
+                false,
+            )) as ModelSubscribeMetaEvent[]),
         ];
         // console.log(
         //     "que is",
@@ -743,8 +766,14 @@ export class ModelEventSubscriber {
         await this.init();
     }
 
-    public async regenerateIndexes(): Promise<void> {
-        await this.findIndexDiff();
+    public async regenerateIndexes(
+        forceMetaUpgrade: boolean = false,
+    ): Promise<void> {
+        await this.findIndexDiff(null, forceMetaUpgrade);
+    }
+
+    public async regenerateMeta(): Promise<void> {
+        await this.updateMetaFields(false);
     }
 
     public async unsubscribe(): Promise<void> {

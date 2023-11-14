@@ -133,16 +133,18 @@ export enum ModelSubscribeEventKeepAliveCheckPendingPeriod {
     "default" = 5000,
 }
 
+export type ModelSubscribeEventMeta = {
+    modelTriggers: (ModelEventAction | string)[];
+    customTriggers?: string[];
+    onModelChange: () => Promise<JSONLike>;
+    onCustomTrigger?: (
+        eventName: string,
+        eventData: JSONLike,
+    ) => Promise<JSONLike>;
+};
+
 export type ModelSubscribeEventMetaField = {
-    [key: string]: {
-        modelTriggers: (ModelEventAction | string)[];
-        customTriggers?: string[];
-        onModelChange: () => Promise<JSONLike>;
-        onCustomTrigger?: (
-            eventName: string,
-            eventData: JSONLike,
-        ) => Promise<JSONLike>;
-    };
+    [key: string]: ModelSubscribeEventMeta;
 };
 
 export type ModelEventMeta = {
