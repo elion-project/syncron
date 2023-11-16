@@ -515,8 +515,9 @@ export class ModelEventSubscriber {
                           item.modelTriggers.some((trigger: string) =>
                               triggers.includes(trigger),
                           ) ||
-                          item.customTriggers.some((customTrigger: string) =>
-                              triggers.includes(customTrigger),
+                          (item.customTriggers || []).some(
+                              (customTrigger: string) =>
+                                  triggers.includes(customTrigger),
                           ),
                   )
                 : items;
