@@ -31,7 +31,7 @@ export const getModelNameFromTrackIdentifier = (
     trackIdentifier: string,
 ): string => trackIdentifier.split(":")[0];
 
-export type ModelId = string | number;
+export type ModelId = number | string;
 
 export type ModelPrototype = {
     [key: string]: JSONLike;

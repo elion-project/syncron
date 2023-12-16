@@ -109,6 +109,7 @@ export type SimpleSubscribeConfig = {
 type ModelSubscribeEventPerformerResponse = {
     shouldUpdateIndexes: boolean;
     newIdList?: IdList;
+    __stage?: number;
 };
 
 export class ModelEventSubscriber {
@@ -123,6 +124,8 @@ export class ModelEventSubscriber {
     private keepAliveTimeout: NodeJS.Timeout | null = null;
 
     private modelState = new Map<ModelId, ModelPrototype>();
+
+    private modelStateIndexes: IdList = [];
 
     private trackIdentifiers: string[] = [];
 
@@ -259,18 +262,18 @@ export class ModelEventSubscriber {
             }),
         );
 
-        const prepareModelCreateEvent = (
-            item: ModelPrototype,
-            index: number,
-        ) => {
-            const id: ModelId = (item as any)[this.config.idParamName];
+        const prepareModelCreateEvent = ([id, data, index]: [
+            ModelId,
+            ModelPrototype,
+            number,
+        ]) => {
             const createEvent: ModelSubscribeUpdateEvent = {
                 modelName: this.config.trackModelName,
                 idParamName: this.config.idParamName,
                 action: ModelEventAction.UPDATE,
                 data: {
                     id,
-                    data: item,
+                    data,
                     index,
                     updateStrategy: UpdateStrategy.REPLACE,
                 },
@@ -280,42 +283,104 @@ export class ModelEventSubscriber {
 
         if (this.config.firstContentSend !== false) {
             const allIds = await this.config.getAllIds();
-            const firstContentIds = allIds.slice(
+            const idsWithIndexes: [ModelId, number][] = allIds.map(
+                (id, index) => [id, index],
+            );
+            const firstContentIds = idsWithIndexes.slice(
                 0,
                 this.config.firstContentSend.size === "auto"
                     ? Math.ceil(allIds.length / 10)
                     : this.config.firstContentSend.size,
             );
-            const firstPart = await this.getBatchDefault(firstContentIds);
-            firstPart.forEach((item) => {
-                const id = (item as any)[this.config.idParamName];
-                this.modelState.set(id, item);
-            });
-            this.pushToSendQueue(...firstPart.map(prepareModelCreateEvent));
 
-            const lastPart = await this.getBatchDefault(
-                allIds.slice(firstContentIds.length),
+            const firstPart = await this.getBatchDefault(
+                firstContentIds.map(([id]) => id),
             );
-            lastPart.forEach((item) => {
-                const id = (item as any)[this.config.idParamName];
-                this.modelState.set(id, item);
+            firstContentIds.forEach(([id, posIndex], index) => {
+                const item = firstPart[index];
+                this.setModel(id, item, posIndex);
             });
-            this.pushToSendQueue(...lastPart.map(prepareModelCreateEvent));
-        } else {
-            const getAllResponse = await this.config.getAll();
 
-            getAllResponse.forEach((item) => {
-                const id = (item as any)[this.config.idParamName];
-                this.modelState.set(id, item);
-            });
             this.pushToSendQueue(
-                ...getAllResponse.map(prepareModelCreateEvent),
+                ...firstContentIds
+                    .map(([id, posIndex], index) => [
+                        id,
+                        firstPart[index],
+                        posIndex,
+                    ])
+                    .map(prepareModelCreateEvent),
             );
+
+            const lastPartIds = idsWithIndexes.slice(firstContentIds.length);
+            if (lastPartIds.length > 0) {
+                const lastPart = await this.getBatchDefault(
+                    lastPartIds.map(([id]) => id),
+                );
+                lastPartIds.forEach(([id, posIndex], index) => {
+                    const item = lastPart[index];
+                    this.setModel(id, item, posIndex);
+                });
+
+                this.pushToSendQueue(
+                    ...lastPartIds
+                        .map(([id, posIndex], index) => [
+                            id,
+                            lastPart[index],
+                            posIndex,
+                        ])
+                        .map(prepareModelCreateEvent),
+                );
+            }
+        } else {
+            const allObjects = await this.config.getAll();
+
+            const allObjectData: [ModelId, ModelPrototype, number][] =
+                allObjects.map((item, index) => [
+                    (item as any)[this.config.idParamName],
+                    item,
+                    index,
+                ]);
+
+            allObjectData.forEach((item) => {
+                this.setModel(...item);
+            });
+
+            this.pushToSendQueue(...allObjectData.map(prepareModelCreateEvent));
+        }
+    }
+
+    private setModel(
+        id: ModelId,
+        data: ModelPrototype,
+        index: number = null,
+    ): void {
+        this.modelState.set(id, data);
+        if (index !== null) this.setIdToIndex(id, index);
+    }
+
+    private deleteModel(id: ModelId): void {
+        this.modelState.delete(id);
+        this.modelStateIndexes.splice(this.modelStateIndexes.indexOf(id), 1);
+    }
+
+    private setIdToIndex(id: ModelId, index: number = -1): void {
+        const isModelPresent = this.modelState.has(id);
+        if (!isModelPresent)
+            throw new Error(`Model with id ${id} is not present in modelState`);
+
+        const currentIndex = this.modelStateIndexes.indexOf(id);
+        if (currentIndex !== -1) {
+            this.modelStateIndexes.splice(currentIndex, 1);
+        }
+        if (index !== -1) {
+            this.modelStateIndexes.push(id);
+        } else {
+            this.modelStateIndexes.splice(index, 0, id);
         }
     }
 
     private getStateIdList(): IdList {
-        return Array.from(this.modelState.keys());
+        return this.modelStateIndexes;
     }
 
     private pushToQueue(...events: ModelPublishEventLikeWithHeader[]): void {
@@ -566,7 +631,7 @@ export class ModelEventSubscriber {
             }
             this.queue = [];
             if (shouldUpdateIndexes) {
-                await this.findIndexDiff();
+                await this.findIndexDiff(newIdList);
             }
 
             await this.updateMetaFields(triggers);
@@ -638,6 +703,22 @@ export class ModelEventSubscriber {
 
         const eventsSet = new Set<ModelEventAction>();
 
+        const lookForData = async (id: ModelId) => {
+            const model = this.modelState.get(id);
+            return model || this.config.getById(id);
+        };
+
+        const updateIndexConfig = (id: ModelId, index: number) =>
+            ({
+                modelName: this.config.trackModelName,
+                idParamName: this.config.idParamName,
+                action: ModelEventAction.UPDATE_INDEX,
+                data: {
+                    id,
+                    index,
+                },
+            }) as ModelSubscribeUpdateIndexEvent;
+
         const que = [
             ...currentIdList
                 .filter((id) => !newIdList.includes(id))
@@ -654,9 +735,14 @@ export class ModelEventSubscriber {
 
             ...(await Promise.all(
                 newIdList.map(async (id, index) => {
-                    if (currentIdList[index] !== id) {
-                        const data = await this.config.getById(id);
-                        this.modelState.set(id, data);
+                    if (id !== currentIdList[index]) {
+                        if (currentIdList.indexOf(id) !== -1) {
+                            // already exists, do index update only
+                            eventsSet.add(ModelEventAction.UPDATE_INDEX);
+                            return updateIndexConfig(id, index);
+                        }
+                        const data = await lookForData(id);
+                        this.setModel(id, data, index);
                         eventsSet.add(ModelEventAction.UPDATE);
                         return {
                             modelName: this.config.trackModelName,
@@ -671,15 +757,7 @@ export class ModelEventSubscriber {
                         } as ModelSubscribeUpdateEvent;
                     }
                     eventsSet.add(ModelEventAction.UPDATE_INDEX);
-                    return {
-                        modelName: this.config.trackModelName,
-                        idParamName: this.config.idParamName,
-                        action: ModelEventAction.UPDATE_INDEX,
-                        data: {
-                            id,
-                            index,
-                        },
-                    } as ModelSubscribeUpdateIndexEvent;
+                    return updateIndexConfig(id, index);
                 }),
             )),
             ...((await this.updateMetaFields(
@@ -687,6 +765,14 @@ export class ModelEventSubscriber {
                 false,
             )) as ModelSubscribeMetaEvent[]),
         ];
+
+        // remove deleted models from state
+        currentIdList
+            .filter((id) => !newIdList.includes(id))
+            .forEach((id) => {
+                this.deleteModel(id);
+            });
+
         // console.log(
         //     "que is",
         //     que.map(
@@ -708,26 +794,29 @@ export class ModelEventSubscriber {
         const indexInNew = newIdList.indexOf(id);
 
         const updateStrategy = body.updateStrategy || "replace";
-        const data: ModelPrototype =
-            (body.data as ModelPrototype) || (await this.config.getById(id));
         const dataFromBody = !!(body.data as ModelPrototype);
+        const data: ModelPrototype = body.data as ModelPrototype;
 
         if (indexInNew !== -1) {
             if (updateStrategy === UpdateStrategy.REPLACE) {
-                this.modelState.set(
+                this.setModel(
                     id,
-                    dataFromBody ? await this.config.sanitizeModel(data) : data,
+                    dataFromBody
+                        ? await this.config.sanitizeModel(data)
+                        : await this.config.getById(id),
+                    indexInNew,
                 );
             } else if (
                 updateStrategy === UpdateStrategy.MERGE &&
                 body.data &&
                 modelHasLocal
             ) {
-                this.modelState.set(
+                this.setModel(
                     id,
                     await this.config.sanitizeModel(
                         merge(this.modelState.get(id), data),
                     ),
+                    indexInNew,
                 );
             }
             this.pushToSendQueue({
@@ -741,18 +830,19 @@ export class ModelEventSubscriber {
                     updateStrategy: UpdateStrategy.REPLACE,
                 },
             });
-            return { shouldUpdateIndexes: true, newIdList };
+            return { shouldUpdateIndexes: true, newIdList, __stage: 1 };
         }
         if (modelHasLocal) {
-            return { shouldUpdateIndexes: true, newIdList };
+            return { shouldUpdateIndexes: true, newIdList, __stage: 2 };
         }
-        return { shouldUpdateIndexes: false, newIdList };
+        return { shouldUpdateIndexes: false, newIdList, __stage: 3 };
     }
 
     public async regenerateState(): Promise<void> {
         await this.unsubscribe();
         const currentIdList = this.getStateIdList();
         this.modelState.clear();
+        this.modelStateIndexes = [];
         this.pushToSendQueue(
             ...currentIdList.map((id) => {
                 const deleteEvent: ModelSubscribeDeleteEvent = {
