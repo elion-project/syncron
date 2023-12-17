@@ -239,7 +239,7 @@ export class ModelEventSubscriber {
                     await Promise.all(
                         Object.entries(this.config.metaFields).map(
                             async ([key, item]) => [
-                                key as string,
+                                key,
                                 await item.onModelChange(),
                             ],
                         ),
@@ -698,8 +698,6 @@ export class ModelEventSubscriber {
     ): Promise<void> {
         const currentIdList = this.getStateIdList();
         const newIdList = existedNewIdList || (await this.config.getAllIds());
-        // console.log("currentIdList", currentIdList);
-        // console.log("newIdList", newIdList);
 
         const eventsSet = new Set<ModelEventAction>();
 
@@ -773,12 +771,6 @@ export class ModelEventSubscriber {
                 this.deleteModel(id);
             });
 
-        // console.log(
-        //     "que is",
-        //     que.map(
-        //         (item) => `${item.action} ${item.data.index} ${item.data.id}`,
-        //     ),
-        // );
         if (que.length) {
             this.pushToSendQueue(...que);
         }

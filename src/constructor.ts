@@ -44,9 +44,7 @@ export class ModelEventConstructor {
         events.forEach((event) => {
             switch (event.action) {
                 case ModelEventAction.UPDATE:
-                    this.onUpdate.bind(this)(
-                        event as ModelSubscribeUpdateEvent,
-                    );
+                    this.onUpdate.bind(this)(event);
                     updateModels = true;
                     break;
                 case ModelEventAction.UPDATE_INDEX:
@@ -54,14 +52,12 @@ export class ModelEventConstructor {
                     updateModels = true;
                     break;
                 case ModelEventAction.DELETE:
-                    this.onDelete.bind(this)(
-                        event as ModelSubscribeDeleteEvent,
-                    );
+                    this.onDelete.bind(this)(event);
                     updateModels = true;
                     break;
                 case ModelEventAction.META:
                     updateMetadata = true;
-                    this.onMeta.bind(this)(event as ModelSubscribeMetaEvent);
+                    this.onMeta.bind(this)(event);
                     break;
                 default:
                     throw new Error(
