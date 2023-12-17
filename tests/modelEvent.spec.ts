@@ -539,6 +539,36 @@ describe("ModelEventSubscriber", () => {
         },
     };
 
+    const strictSettingsWithFCR: {
+        firstContentSend: {
+            size: ModelEvent.ModelSubscriberEventFirstContentSendSize;
+        };
+        optimization: {
+            publisherModelEventOptimization: boolean;
+            subscriberPostModelEventOptimization: boolean;
+        };
+        batchSize: any;
+        queWaitTime: any;
+        keepAlive: {
+            onKeepAlive: () => Promise<boolean>;
+        };
+    } = {
+        batchSize: ModelEvent.ModelSubscribeEventBatchSize.auto,
+
+        optimization: {
+            publisherModelEventOptimization: false,
+            subscriberPostModelEventOptimization: false,
+        },
+        firstContentSend: {
+            size: ModelEvent.ModelSubscriberEventFirstContentSendSize.auto,
+        },
+        queWaitTime: ModelEvent.ModelSubscribeEventQueWaitTime.default,
+
+        keepAlive: {
+            onKeepAlive: () => Promise.resolve(true),
+        },
+    };
+
     it("ModelEventSubscriber: Clear sort switch", async () => {
         const db = new DB();
         let sortType: SORT = SORT.ASC;
@@ -1118,6 +1148,69 @@ describe("ModelEventSubscriber", () => {
         await simpleWait(200);
 
         expect(getByIdCalls).toEqual(1);
+        expect(idExtractor(currentObjectState)).toEqual(
+            await db.getAll(true, { sort: sortType }),
+        );
+    });
+
+    it("ModelEventSubscriber: FCR", async () => {
+        const db = new DB();
+        const sortType: SORT = SORT.ASC;
+        let currentObjectState: DbModel[] = [];
+        const trackEvent: {
+            [key: string]: ModelEvent.ModelEventSubscriber["onTrackEvent"];
+        } = {};
+
+        let getAllIndexCount = 0;
+        let getAllIdsIndexCount = 0;
+        let getByIdIndexCount = 0;
+
+        const modelEventPublisher = new ModelEvent.ModelEventPublisher({
+            modelName,
+            send: (header, payload) => {
+                trackEvent[header](header, payload);
+            },
+        });
+        const modelEventConstructor = new ModelEvent.ModelEventConstructor({
+            onModelUpdate: (event) => {
+                // @ts-ignore
+                currentObjectState = event;
+            },
+        });
+
+        const modelEventSubscriber = new ModelEvent.ModelEventSubscriber({
+            trackModelName: modelName,
+            idParamName: "id",
+
+            getAll: () => {
+                getAllIndexCount++;
+                return db.getAll(false, { sort: sortType }) as Promise<any[]>;
+            },
+            getAllIds: () => {
+                getAllIdsIndexCount++;
+                return db.getAll(true, { sort: sortType }) as Promise<number[]>;
+            },
+            getById: (id: number) => {
+                getByIdIndexCount++;
+                return db.getById(id);
+            },
+            sanitizeModel: (body: DbModel) => Promise.resolve(body),
+            track: (trackIdentifier, onTrackEvent) => {
+                trackEvent[trackIdentifier] = onTrackEvent;
+            },
+            removeTrack: () => Promise.resolve(),
+            onModelEvent: (event) => {
+                // @ts-ignore
+                modelEventConstructor.onEvent(event);
+            },
+
+            ...strictSettingsWithFCR,
+        });
+        await simpleWait(400);
+
+        expect(getAllIndexCount).toEqual(0);
+        expect(getAllIdsIndexCount).toEqual(1);
+        expect(getByIdIndexCount).toEqual(5);
         expect(idExtractor(currentObjectState)).toEqual(
             await db.getAll(true, { sort: sortType }),
         );
