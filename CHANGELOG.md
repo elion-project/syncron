@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.5](https://github.com/elion-project/syncron/compare/v2.0.4...v2.0.5) (2023-12-17)
+
+
+### Bug Fixes
+
+* Refactor code for improved readability and efficiency ([79e6b41](https://github.com/elion-project/syncron/commit/79e6b41f2366fbc673a54f929fdfd861ac6b9939))
+* Update SonarQube properties file ([5781d44](https://github.com/elion-project/syncron/commit/5781d4443d28b0d6895497f2eaadb333147c04f7))
+* Update SonarQube properties file ([55f25fe](https://github.com/elion-project/syncron/commit/55f25fef34f33955d794e8ba29c75c1058a0614e))
+* Update SonarQube properties file ([1363983](https://github.com/elion-project/syncron/commit/13639838d137198be5e98406ed153191626b5753))
+
 ### [2.0.4](https://github.com/elion-project/syncron/compare/v2.0.3...v2.0.4) (2023-12-17)
 
 
