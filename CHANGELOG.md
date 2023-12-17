@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.4](https://github.com/elion-project/syncron/compare/v2.0.3...v2.0.4) (2023-12-17)
+
+
+### Bug Fixes
+
+* Refactor onUpdateIndex method and update Sonar and README ([99ac2d0](https://github.com/elion-project/syncron/commit/99ac2d084a0147ec06c2e4050ed5c19602e4c478))
+
 ### [2.0.3](https://github.com/elion-project/syncron/compare/v2.0.2...v2.0.3) (2023-12-17)
 
 
