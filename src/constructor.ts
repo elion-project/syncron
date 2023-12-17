@@ -50,10 +50,7 @@ export class ModelEventConstructor {
                     updateModels = true;
                     break;
                 case ModelEventAction.UPDATE_INDEX:
-                    // fixme: implement
-                    this.onUpdateIndex.bind(this)(
-                        event as ModelSubscribeUpdateIndexEvent,
-                    );
+                    this.onUpdateIndex.bind(this)(event);
                     updateModels = true;
                     break;
                 case ModelEventAction.DELETE:

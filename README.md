@@ -2,8 +2,7 @@
 [![View this project on NPM](https://img.shields.io/npm/v/@node-elion/syncron.svg)](https://npmjs.org/package/@node-elion/syncron)
 [![View this project on NPM](https://img.shields.io/npm/dm/@node-elion/syncron.svg)](https://npmjs.org/package/@node-elion/syncron)
 [![Known Vulnerabilities](https://snyk.io/test/github/elion-project/syncron/badge.svg)](https://snyk.io/test/github/elion-project/syncron)
-[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=elion-project_syncron)](https://sonarcloud.io/summary/new_code?id=elion-project_syncron)
-
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=elion-project_syncron&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=elion-project_syncron)
 # @node-elion/syncron
 
 this package is part of the [Elion project](https://github.com/elion-project).
