@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.3](https://github.com/elion-project/syncron/compare/v2.0.2...v2.0.3) (2023-12-17)
+
+
+### Bug Fixes
+
+* Add comprehensive unit tests for ModelEvent classes ([5874134](https://github.com/elion-project/syncron/commit/5874134e5a6732ab5c8f7704bbfdb0bddace73e7))
+* Add FCR test and strict settings in modelEvent.spec.ts ([ccb9471](https://github.com/elion-project/syncron/commit/ccb9471987661f6777205e0ed9de12fa973d8f63))
+* Enhance subscriber model state management ([337c349](https://github.com/elion-project/syncron/commit/337c349163536921f0cbd66b84f09b7c73f9290f))
+
 ### [2.0.2](https://github.com/elion-project/syncron/compare/v2.0.1...v2.0.2) (2023-11-16)
 
 
