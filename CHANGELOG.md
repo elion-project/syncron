@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.6](https://github.com/elion-project/syncron/compare/v2.0.5...v2.0.6) (2024-01-31)
+
+
+### Bug Fixes
+
+* Update dependencies. Add events count test ([4ee911e](https://github.com/elion-project/syncron/commit/4ee911eb924ed1a7fa7865bffe60670773cc06cd))
+
 ### [2.0.5](https://github.com/elion-project/syncron/compare/v2.0.4...v2.0.5) (2023-12-17)
 
 
