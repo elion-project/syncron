@@ -541,7 +541,7 @@ describe("ModelEventSubscriber", () => {
 
     const strictSettingsWithFCR: {
         firstContentSend: {
-            size: ModelEvent.ModelSubscriberEventFirstContentSendSize;
+            size: ModelEvent.ModelSubscriberEventFirstContentSendSize.auto;
         };
         optimization: {
             publisherModelEventOptimization: boolean;
@@ -1211,6 +1211,80 @@ describe("ModelEventSubscriber", () => {
         expect(getAllIndexCount).toEqual(0);
         expect(getAllIdsIndexCount).toEqual(1);
         expect(getByIdIndexCount).toEqual(5);
+        expect(idExtractor(currentObjectState)).toEqual(
+            await db.getAll(true, { sort: sortType }),
+        );
+    });
+    it("ModelEventSubscriber: Sent Updates Count", async () => {
+        const db = new DB();
+        let sortType: SORT = SORT.ASC;
+        let currentObjectState: DbModel[] = [];
+        const trackEvent: {
+            [key: string]: ModelEvent.ModelEventSubscriber["onTrackEvent"];
+        } = {};
+
+        let getAllIndexCount = 0;
+        let getAllIdsIndexCount = 0;
+        let getByIdIndexCount = 0;
+        const receivedUpdates: any[] = [];
+
+        const modelEventPublisher = new ModelEvent.ModelEventPublisher({
+            modelName,
+            send: (header, payload) => {
+                trackEvent[header](header, payload);
+            },
+        });
+
+        const modelEventConstructor = new ModelEvent.ModelEventConstructor({
+            onModelUpdate: (event) => {
+                // @ts-ignore
+                currentObjectState = event;
+            },
+            onUpdate: (event) => {
+                receivedUpdates.push(event);
+            },
+        });
+
+        const modelEventSubscriber = new ModelEvent.ModelEventSubscriber({
+            trackModelName: modelName,
+            idParamName: "id",
+
+            getAll: () => {
+                getAllIndexCount++;
+                return db.getAll(false, { sort: sortType }) as Promise<any[]>;
+            },
+            getAllIds: () => {
+                getAllIdsIndexCount++;
+                return db.getAll(true, { sort: sortType }) as Promise<number[]>;
+            },
+            getById: (id: number) => {
+                getByIdIndexCount++;
+                return db.getById(id);
+            },
+            sanitizeModel: (body: DbModel) => Promise.resolve(body),
+            track: (trackIdentifier, onTrackEvent) => {
+                trackEvent[trackIdentifier] = onTrackEvent;
+            },
+            removeTrack: () => Promise.resolve(),
+            onModelEvent: (event) => {
+                // @ts-ignore
+                modelEventConstructor.onEvent(event);
+            },
+
+            ...strictSettings,
+        });
+        await simpleWait(400);
+
+        expect(receivedUpdates).toHaveLength(1);
+
+        sortType = SORT.DESC;
+
+        await modelEventSubscriber.regenerateIndexes();
+        await simpleWait(200);
+
+        expect(getAllIndexCount).toEqual(1);
+        expect(getAllIdsIndexCount).toEqual(1);
+        expect(getByIdIndexCount).toEqual(0);
         expect(idExtractor(currentObjectState)).toEqual(
             await db.getAll(true, { sort: sortType }),
         );
