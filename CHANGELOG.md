@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.1.0](https://github.com/elion-project/syncron/compare/v2.0.6...v2.1.0) (2024-04-07)
+
+
+### Features
+
+* Update `subscriber.ts` to improve event handling and regeneration ([fb75e16](https://github.com/elion-project/syncron/commit/fb75e16cff9ebb105054d7aa245318913f0c3a31))
+
 ### [2.0.6](https://github.com/elion-project/syncron/compare/v2.0.5...v2.0.6) (2024-01-31)
 
 
