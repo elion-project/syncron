@@ -8,9 +8,17 @@ export type JSONLike =
 
 export enum ModelEventAction {
     UPDATE = "update",
+    MANUAL_UPDATE = "manual-update",
     UPDATE_INDEX = "update-index",
     DELETE = "delete",
     META = "meta",
+}
+
+export enum ManualUpdateTypes {
+    INIT = "init",
+    REGENERATE_STATE = "regenerateState",
+    REGENERATE_INDEXES = "regenerateIndexes",
+    REGENERATE_METADATA = "regenerateMetadata",
 }
 
 export type UpdateStrategyType = UpdateStrategy;
@@ -66,6 +74,13 @@ export type ModelSubscribeUpdateIndexEvent = ModelSubscribeEvent & {
     };
 };
 
+export type ModelSubscribeManualUpdateEvent = ModelSubscribeEvent & {
+    action: ModelEventAction.MANUAL_UPDATE;
+    data: {
+        id: ManualUpdateTypes;
+    };
+};
+
 export type ModelSubscribeDeleteEvent = ModelSubscribeEvent & {
     action: ModelEventAction.DELETE;
     data: {
@@ -85,7 +100,8 @@ export type ModelSubscribeEventLike =
     | ModelSubscribeUpdateEvent
     | ModelSubscribeUpdateIndexEvent
     | ModelSubscribeDeleteEvent
-    | ModelSubscribeMetaEvent;
+    | ModelSubscribeMetaEvent
+    | ModelSubscribeManualUpdateEvent;
 
 export type ModelPublishEvent = {
     id: ModelId;

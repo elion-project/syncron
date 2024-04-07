@@ -26,6 +26,8 @@ import {
     JSONLike,
     ModelSubscribeUpdateIndexEvent,
     ModelSubscribeEventMeta,
+    ModelSubscribeManualUpdateEvent,
+    ManualUpdateTypes,
 } from "./types";
 
 export type CustomTriggerOnEmit = {
@@ -72,7 +74,7 @@ export type SubscribeConfig = {
         onTrackEvent: ModelEventSubscriber["onTrackEvent"],
     ) => void;
     removeTrack: (trackIdentifier: string) => Promise<void>;
-    onModelEvent: (event: ModelSubscribeEvent[]) => void;
+    onModelEvent: (event: ModelSubscribeEventLike[]) => void;
     // @description if batchSize is "auto" then batchSize will be calculated by count of available queue items. If batchSize is number, then que will wait for required count of items and then send them
     batchSize?: number | ModelSubscribeEventBatchSize;
     optimization?: {
@@ -234,6 +236,14 @@ export class ModelEventSubscriber {
         );
 
         this.pushToSendQueue(
+            {
+                modelName: this.config.trackModelName,
+                idParamName: this.config.idParamName,
+                action: ModelEventAction.MANUAL_UPDATE,
+                data: {
+                    id: ManualUpdateTypes.INIT,
+                },
+            } as ModelSubscribeManualUpdateEvent,
             ...Object.entries(
                 (
                     await Promise.all(
@@ -541,32 +551,152 @@ export class ModelEventSubscriber {
     }
 
     private async optimizeSendQueue(): Promise<void> {
-        Object.entries(
-            this.sendQueue.reduce((acc, item, index) => {
-                if ((acc as any)[item.data.id]) {
-                    (acc as any)[item.data.id].push({ event: item, index });
-                    return acc;
-                }
-                return { ...acc, [item.data.id]: [{ event: item, index }] };
-            }, {}) as {
-                [x: ModelId]: {
-                    event: ModelSubscribeEventLike;
-                    index: number;
-                }[];
-            },
+        const metaEvents: ModelSubscribeMetaEvent[] = (
+            Object.values(
+                this.sendQueue
+                    .filter((event) => event.action === ModelEventAction.META)
+                    .reduce(
+                        (acc, event: ModelSubscribeMetaEvent) => ({
+                            ...acc,
+                            [event.data.id]: event,
+                        }),
+                        {},
+                    ),
+            ) as ModelSubscribeMetaEvent[]
+        ).reduce((acc, value) => [...acc, value], []);
+        const systemEvents = this.sendQueue.filter(
+            (event) => event.action !== ModelEventAction.MANUAL_UPDATE,
+        );
+
+        const modelEvents = this.sendQueue.filter(
+            (event) =>
+                [ModelEventAction.MANUAL_UPDATE, ModelEventAction.META].indexOf(
+                    event.action,
+                ) === -1,
+        );
+        const uniqModelEvents: ModelSubscribeEventLike[] = Array.from(
+            new Set(
+                modelEvents.map(
+                    (event) => (event as ModelSubscribeEvent).data.id,
+                ),
+            ),
         )
-            .filter(([, items]) => items.length > 1)
-            .forEach(([, items]) => {
-                if (
-                    items
-                        .map((item) => item.event.action)
-                        .every((action) => action === "update")
-                ) {
-                    items.slice(0, -1).forEach((item) => {
-                        this.sendQueue.splice(item.index, 1);
-                    });
+            .map((id) => {
+                const events = modelEvents
+                    .filter((event) => event.data.id === id)
+                    .map((event, index) => ({
+                        event,
+                        index,
+                    }));
+                const deleteEvent = events
+                    .slice()
+                    .reverse()
+                    .find(
+                        ({ event }) => event.action === ModelEventAction.DELETE,
+                    );
+                const updateEvents = events.filter(
+                    ({ event }) =>
+                        [
+                            ModelEventAction.DELETE,
+                            ModelEventAction.META,
+                            ModelEventAction.MANUAL_UPDATE,
+                        ].indexOf(event.action as ModelEventAction) === -1,
+                );
+                const excludedEvents: number[] = [];
+
+                if (deleteEvent) {
+                    if (
+                        deleteEvent.index >
+                        Math.max(...updateEvents.map(({ index }) => index))
+                    ) {
+                        return [deleteEvent.event];
+                    }
+
+                    excludedEvents.push(
+                        ...events
+                            .map(({ index }) => index)
+                            .filter((index) => deleteEvent.index >= index),
+                    );
                 }
-            });
+
+                const clearedUpdateEvents = updateEvents
+                    .filter(({ index }) => !excludedEvents.includes(index))
+                    .map((item, index) => ({
+                        internalIndex: index,
+                        ...item,
+                    }));
+
+                if (clearedUpdateEvents.length > 1) {
+                    const reversedEvents = clearedUpdateEvents
+                        .slice()
+                        .reverse();
+                    const lastUpdateEvent = reversedEvents.find(
+                        ({ event }) => event.action === ModelEventAction.UPDATE,
+                    );
+
+                    const lastUpdateReturn = () => [
+                        lastUpdateEvent.event,
+                        ...clearedUpdateEvents
+                            .filter(
+                                ({ event }) =>
+                                    [
+                                        ModelEventAction.UPDATE_INDEX,
+                                        ModelEventAction.UPDATE,
+                                    ].indexOf(event.action) === -1,
+                            )
+                            .map(({ event }) => event),
+                    ];
+
+                    if (
+                        lastUpdateEvent.internalIndex ===
+                        clearedUpdateEvents.length - 1
+                    ) {
+                        if (
+                            (lastUpdateEvent.event as ModelSubscribeUpdateEvent)
+                                .data.updateStrategy === UpdateStrategy.REPLACE
+                        ) {
+                            return lastUpdateReturn();
+                        }
+                    } else {
+                        const lastUpdateIndexEvent = reversedEvents.find(
+                            ({ event }) =>
+                                event.action === ModelEventAction.UPDATE_INDEX,
+                        );
+
+                        if (
+                            lastUpdateIndexEvent.internalIndex >
+                            lastUpdateEvent.internalIndex
+                        ) {
+                            lastUpdateEvent.event.data.index = (
+                                lastUpdateIndexEvent.event as ModelSubscribeUpdateIndexEvent
+                            ).data.index;
+                        }
+
+                        if (
+                            (lastUpdateEvent.event as ModelSubscribeUpdateEvent)
+                                .data.updateStrategy === UpdateStrategy.REPLACE
+                        ) {
+                            return lastUpdateReturn();
+                        }
+                    }
+                    excludedEvents.push(
+                        ...clearedUpdateEvents
+                            .filter(
+                                ({ event }) =>
+                                    event.action ===
+                                    ModelEventAction.UPDATE_INDEX,
+                            )
+                            .map(({ index }) => index),
+                    );
+                }
+
+                return events
+                    .filter(({ index }) => !excludedEvents.includes(index))
+                    .map(({ event }) => event);
+            })
+            .flat();
+
+        this.sendQueue = [...metaEvents, ...systemEvents, ...uniqModelEvents];
     }
 
     private async updateMetaFields(
@@ -836,15 +966,25 @@ export class ModelEventSubscriber {
         this.modelState.clear();
         this.modelStateIndexes = [];
         this.pushToSendQueue(
-            ...currentIdList.map((id) => {
-                const deleteEvent: ModelSubscribeDeleteEvent = {
+            ...[
+                {
                     modelName: this.config.trackModelName,
                     idParamName: this.config.idParamName,
-                    action: ModelEventAction.DELETE,
-                    data: { id },
-                };
-                return deleteEvent;
-            }),
+                    action: ModelEventAction.MANUAL_UPDATE,
+                    data: {
+                        id: ManualUpdateTypes.REGENERATE_STATE,
+                    },
+                } as ModelSubscribeManualUpdateEvent,
+                ...currentIdList.map((id) => {
+                    const deleteEvent: ModelSubscribeDeleteEvent = {
+                        modelName: this.config.trackModelName,
+                        idParamName: this.config.idParamName,
+                        action: ModelEventAction.DELETE,
+                        data: { id },
+                    };
+                    return deleteEvent;
+                }),
+            ],
         );
         await this.init();
     }
@@ -852,10 +992,26 @@ export class ModelEventSubscriber {
     public async regenerateIndexes(
         forceMetaUpgrade: boolean = false,
     ): Promise<void> {
+        this.pushToSendQueue({
+            modelName: this.config.trackModelName,
+            idParamName: this.config.idParamName,
+            action: ModelEventAction.MANUAL_UPDATE,
+            data: {
+                id: ManualUpdateTypes.REGENERATE_INDEXES,
+            },
+        } as ModelSubscribeManualUpdateEvent);
         await this.findIndexDiff(null, forceMetaUpgrade);
     }
 
     public async regenerateMeta(): Promise<void> {
+        this.pushToSendQueue({
+            modelName: this.config.trackModelName,
+            idParamName: this.config.idParamName,
+            action: ModelEventAction.MANUAL_UPDATE,
+            data: {
+                id: ManualUpdateTypes.REGENERATE_METADATA,
+            },
+        } as ModelSubscribeManualUpdateEvent);
         await this.updateMetaFields(false);
     }
 

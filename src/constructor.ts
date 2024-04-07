@@ -10,6 +10,7 @@ import {
     JSONLike,
     ModelEventAction,
     ModelSubscribeUpdateIndexEvent,
+    ModelSubscribeManualUpdateEvent,
 } from "./types";
 
 export type ModelEventConstructorConfig = {
@@ -19,6 +20,9 @@ export type ModelEventConstructorConfig = {
     }): void | Promise<void>;
     onMetaUpdate?(metadataState: ModelEventMeta): void | Promise<void>;
     onModelUpdate?(models: JSONLike[]): void | Promise<void>;
+    onSystemEvent?(
+        events: ModelSubscribeManualUpdateEvent[],
+    ): void | Promise<void>;
 };
 
 export class ModelEventConstructor {
@@ -35,12 +39,14 @@ export class ModelEventConstructor {
             onUpdate: config.onUpdate || (() => {}),
             onMetaUpdate: config.onMetaUpdate || (() => {}),
             onModelUpdate: config.onModelUpdate || (() => {}),
+            onSystemEvent: config.onSystemEvent || (() => {}),
         };
     }
 
     public onEvent(events: ModelSubscribeEventLike[]): void {
         let updateMetadata = false;
         let updateModels = false;
+        const systemEvent: ModelSubscribeManualUpdateEvent[] = [];
         events.forEach((event) => {
             switch (event.action) {
                 case ModelEventAction.UPDATE:
@@ -48,6 +54,7 @@ export class ModelEventConstructor {
                     updateModels = true;
                     break;
                 case ModelEventAction.UPDATE_INDEX:
+                    // TODO: Check if index the same
                     this.onUpdateIndex.bind(this)(event);
                     updateModels = true;
                     break;
@@ -59,6 +66,9 @@ export class ModelEventConstructor {
                     updateMetadata = true;
                     this.onMeta.bind(this)(event);
                     break;
+                case ModelEventAction.MANUAL_UPDATE:
+                    systemEvent.push(event);
+                    break;
                 default:
                     throw new Error(
                         `Unknown action "${
@@ -67,6 +77,11 @@ export class ModelEventConstructor {
                     );
             }
         });
+
+        if (systemEvent.length) {
+            this.config.onSystemEvent(systemEvent);
+        }
+
         if (updateMetadata || updateModels) {
             this.updateInnerState.bind(this)();
         }
