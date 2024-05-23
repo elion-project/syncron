@@ -162,7 +162,7 @@ export class ModelEventSubscriber {
             },
             batchSize: config.batchSize || ModelSubscribeEventBatchSize.auto,
             firstContentSend:
-                config.firstContentSend === false
+                typeof config.firstContentSend !== "object"
                     ? false
                     : {
                           size:
