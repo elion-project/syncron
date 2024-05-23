@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.1.1](https://github.com/elion-project/syncron/compare/v2.1.0...v2.1.1) (2024-05-23)
+
+
+### Bug Fixes
+
+* Correct condition check for 'firstContentSend' in subscriber config ([7dfbfaa](https://github.com/elion-project/syncron/commit/7dfbfaa138da3abfba4859bf794955b43a15c81d))
+* Update eslint and related devDependencies ([88d2f03](https://github.com/elion-project/syncron/commit/88d2f0322dfcf11453c4e95f7996bbfc130adf76))
+
 ## [2.1.0](https://github.com/elion-project/syncron/compare/v2.0.6...v2.1.0) (2024-04-07)
 
 
