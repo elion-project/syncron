@@ -1,6 +1,8 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
+
+## [2.1.2](https://github.com/elion-project/syncron/compare/v2.1.1...v2.1.2) (2025-07-11)
 
 ### [2.1.1](https://github.com/elion-project/syncron/compare/v2.1.0...v2.1.1) (2024-05-23)
 
